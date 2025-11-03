@@ -242,7 +242,8 @@
 
     .field-item {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
       padding: 8px 14px;
       background: #f8f9ff;
       border-radius: 8px;
@@ -253,6 +254,12 @@
 
     .field-item:hover {
       background: #f0f1ff;
+    }
+
+    .field-checkbox-row {
+      display: flex;
+      align-items: center;
+      width: 100%;
     }
 
     .field-item input[type="checkbox"] {
@@ -267,6 +274,18 @@
       color: #333;
       font-size: 14px;
       font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .field-sample {
+      color: #888;
+      font-size: 12px;
+      font-style: italic;
+      margin-top: 4px;
+      margin-left: 30px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
@@ -546,6 +565,10 @@
         const fieldItem = document.createElement('div');
         fieldItem.className = 'field-item';
 
+        // Create checkbox row wrapper
+        const checkboxRow = document.createElement('div');
+        checkboxRow.className = 'field-checkbox-row';
+
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `field-${header}`;
@@ -557,8 +580,19 @@
         label.htmlFor = `field-${header}`;
         label.textContent = header;
 
-        fieldItem.appendChild(checkbox);
-        fieldItem.appendChild(label);
+        checkboxRow.appendChild(checkbox);
+        checkboxRow.appendChild(label);
+        fieldItem.appendChild(checkboxRow);
+
+        // Add sample data preview
+        if (currentData.rows && currentData.rows.length > 0) {
+          const sampleValue = currentData.rows[0][header] || '';
+          const sampleText = document.createElement('div');
+          sampleText.className = 'field-sample';
+          sampleText.textContent = `"${sampleValue}"`;
+          sampleText.title = sampleValue; // Show full text on hover
+          fieldItem.appendChild(sampleText);
+        }
 
         // Click on item to toggle checkbox
         fieldItem.addEventListener('click', (e) => {
