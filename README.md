@@ -6,6 +6,7 @@ macOS app that converts CSV timecode files to BWF (Broadcast Wave Format) audio 
 
 - **Automatic Logic Pro import** - AppleScript automation creates track and imports markers
 - **Intelligent playhead positioning** - Calculates start timecode from CSV for accurate placement
+- **Automatic marker extraction** - Imports BWF markers into Logic's marker list
 - Multiple timecode formats: seconds, MM:SS, HH:MM:SS, HH:MM:SS:FF
 - Smart frame rate detection (24, 25, 30, 50, 60 fps)
 - Multi-column CSV support with field selection
@@ -60,6 +61,7 @@ npm start
    - Positions playhead at calculated start (00:00:00:00, 01:00:00:00, etc.)
    - Creates new audio track
    - Automatically imports marker file to the new track
+   - Extracts BWF markers into Logic's marker list
    - Works with Logic Pro sessions that have SMPTE offsets
 
 **Manual import (if needed):**
@@ -154,6 +156,7 @@ The built app will be in the `dist` folder.
 3. Uses AppleScript to position Logic Pro playhead at calculated start
 4. Creates new audio track
 5. Imports marker file with embedded BWF markers
+6. Extracts markers from audio file into Logic's marker list via Navigate > Other > Import Marker from Audio File
 
 **WAV File Format:**
 - **Cue chunks**: Markers at CSV timecode positions

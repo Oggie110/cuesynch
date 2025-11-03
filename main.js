@@ -175,6 +175,13 @@ ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, sel
             delay 0.5
             keystroke return
 
+            delay 2
+
+            -- After import completes, trigger "Import Marker from Audio File" on the imported region
+            click menu item "Import Marker from Audio File" of menu 1 of menu item "Other" of menu "Navigate" of menu bar 1
+
+            delay 1
+
             return "success"
           end tell
         end tell
