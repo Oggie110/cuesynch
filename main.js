@@ -1,14 +1,15 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { generateWavWithMarkers } = require('./wav-generator');
 
 let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 650,
+    width: 1400,
+    height: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -68,17 +69,35 @@ ipcMain.handle('analyze-csv', async (event, csvPath, frameRate) => {
 });
 
 // Generate WAV file with selected fields
-ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, selectedFields) => {
+ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, selectedFields, fileNameField, firstRowValue) => {
   try {
     // Read and parse CSV
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
-    const markers = parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields);
+    const { markers, startTimecode } = parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields);
+
+    // Determine default filename and directory
+    const csvDir = path.dirname(csvPath);
+    let defaultFileName = 'Marker-list.wav';
+
+    if (fileNameField && firstRowValue) {
+      // Remove any existing file extensions FIRST
+      let processed = firstRowValue.replace(/\.(mp4|mov|wav|aiff|m4a|mp3|aif)$/i, '');
+
+      // Then sanitize the filename (remove invalid characters)
+      let sanitized = processed.replace(/[^a-z0-9_\-\s]/gi, '_').trim();
+
+      if (sanitized) {
+        defaultFileName = `${sanitized}_marker_list.wav`;
+      }
+    }
+
+    const defaultPath = path.join(csvDir, defaultFileName);
 
     // Ask user where to save the WAV file
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: 'Save Marker Audio File',
-      defaultPath: 'markers.wav',
+      defaultPath: defaultPath,
       filters: [
         { name: 'WAV Files', extensions: ['wav'] }
       ]
@@ -93,9 +112,46 @@ ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, sel
 
     const frameRateInfo = frameRate ? ` (${frameRate} fps)` : '';
 
+    // Try to import into Logic Pro using AX API
+    try {
+      // Use execFileSync instead of execSync to bypass shell and preserve Swedish characters
+      const { execFileSync } = require('child_process');
+
+      // Get just the directory path and filename separately
+      // Normalize to NFC (composed form) to handle Swedish characters (Å, Ä, Ö) properly
+      const dirPath = path.dirname(filePath).normalize('NFC');
+      const fileName = path.basename(filePath).normalize('NFC');
+
+      console.log('=== AX API AUTOMATION DEBUG ===');
+      console.log('Full filePath:', filePath);
+      console.log('Directory path:', dirPath);
+      console.log('Filename:', fileName);
+      console.log('Start timecode:', startTimecode);
+
+      // Use AX API for ALL Logic Pro interactions (100% reliable)
+      const axDriverPath = path.join(__dirname, 'ax-driver-poc', '.build', 'release', 'logic-ax');
+      console.log('Running complete AX workflow...');
+
+      try {
+        // Run the complete workflow: playhead + track + file import + marker import
+        // Use array form to pass arguments directly without shell interpretation
+        execFileSync(axDriverPath, ['workflow', startTimecode, dirPath, fileName], {
+          encoding: 'utf-8',
+          stdio: 'inherit'
+        });
+        console.log('✓ Complete automation workflow finished successfully via AX API');
+      } catch (axError) {
+        console.log('AX workflow failed:', axError.message);
+        throw axError;
+      }
+
+    } catch (error) {
+      console.log('Error with AX automation:', error);
+    }
+
     return {
       success: true,
-      message: `Markers file created successfully${frameRateInfo} at:\n${filePath}\n\nTo import into Logic Pro:\n1. Open your Logic Pro project\n2. Go to Navigate > Other > Import Marker from Audio File\n3. Select the generated WAV file`
+      message: `Markers file created successfully${frameRateInfo} at:\n${filePath}\n\nAutomatically importing to Logic Pro...`
     };
   } catch (error) {
     return {
@@ -184,6 +240,7 @@ function parseCSVWithHeaders(csvContent) {
 function parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields) {
   const { headers, rows } = parseCSVWithHeaders(csvContent);
   const markers = [];
+  let earliestTime = null;
 
   console.log('=== CSV PARSING DEBUG ===');
   console.log('Time Column:', timeColumn);
@@ -203,6 +260,11 @@ function parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedF
 
     if (time === null) continue;
 
+    // Track earliest time
+    if (earliestTime === null || time < earliestTime) {
+      earliestTime = time;
+    }
+
     // Build marker name from selected fields
     const nameParts = selectedFields
       .map(field => row[field])
@@ -220,7 +282,16 @@ function parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedF
   // Sort markers by time
   markers.sort((a, b) => a.time - b.time);
 
-  return markers;
+  // Calculate start timecode from earliest marker time
+  let startTimecode = '00 00 00 00'; // Default
+  if (earliestTime !== null) {
+    const hours = Math.floor(earliestTime / 3600);
+    const startHour = Math.floor(hours); // Round down to nearest hour
+    startTimecode = String(startHour).padStart(2, '0') + ' 00 00 00';
+    console.log('Calculated start timecode:', startTimecode, 'from earliest time:', earliestTime, 'seconds');
+  }
+
+  return { markers, startTimecode };
 }
 
 function parseCSVLine(line) {

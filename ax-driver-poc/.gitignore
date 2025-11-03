@@ -1,0 +1,10 @@
+# Swift build artifacts
+.build/
+*.swiftpm/
+.swiftpm/
+
+# Test logs
+/tmp/ax-test-*.log
+
+# macOS
+.DS_Store

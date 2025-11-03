@@ -4,11 +4,15 @@ macOS app that converts CSV timecode files to BWF (Broadcast Wave Format) audio 
 
 ## Features
 
+- **Automatic Logic Pro import** - AppleScript automation creates track and imports markers
+- **Intelligent playhead positioning** - Calculates start timecode from CSV for accurate placement
+- **Automatic marker extraction** - Imports BWF markers into Logic's marker list
 - Multiple timecode formats: seconds, MM:SS, HH:MM:SS, HH:MM:SS:FF
 - Smart frame rate detection (24, 25, 30, 50, 60 fps)
 - Multi-column CSV support with field selection
-- BWF TimeReference for accurate timeline positioning
-- Works with Logic Pro's SMPTE offset settings
+- Smart filename generation from CSV fields
+- Handles SMPTE offset sessions (00:00:00:00, 01:00:00:00, etc.)
+- UTF-8 support for international characters (Å, Ä, Ö, etc.)
 
 ## Installation
 
@@ -16,6 +20,17 @@ macOS app that converts CSV timecode files to BWF (Broadcast Wave Format) audio 
 ```bash
 npm install
 ```
+
+## Setup (One-Time)
+
+**Enable macOS Accessibility for Automation:**
+
+1. Open **System Settings** (or System Preferences)
+2. Go to **Privacy & Security > Accessibility**
+3. Add and enable the app you're using to run CueSynch (Terminal, VS Code, etc.)
+4. This allows CueSynch to automate Logic Pro via AppleScript
+
+That's it! CueSynch will automatically create a new track and import markers.
 
 ## Usage
 
@@ -34,13 +49,24 @@ npm start
    - Selected fields will be joined with " - " in the marker name
    - Preview shows how the first marker will look in real-time
 
-5. Choose where to save the generated WAV file
+5. **Smart file naming**:
+   - Choose a CSV field (like "File", "Project", "Title") to automatically name your WAV file
+   - Or click "Use Custom Name" to enter your own filename
+   - Automatically removes file extensions and adds "_marker_list.wav"
 
-6. Import the WAV file into Logic Pro:
-   - Open your Logic Pro project
-   - Go to **Navigate > Other > Import Marker from Audio File**
+6. Choose where to save the generated WAV file (defaults to CSV location)
+
+7. **Automatic import to Logic Pro:**
+   - Calculates session start timecode from CSV data
+   - Positions playhead at calculated start (00:00:00:00, 01:00:00:00, etc.)
+   - Creates new audio track
+   - Automatically imports marker file to the new track
+   - Extracts BWF markers into Logic's marker list
+   - Works with Logic Pro sessions that have SMPTE offsets
+
+**Manual import (if needed):**
+   - Go to **File > Import > Audio File** (Shift+Command+I)
    - Select the generated WAV file
-   - Markers should now appear at their correct timestamps
 
 ## CSV Format
 
@@ -124,23 +150,27 @@ The built app will be in the `dist` folder.
 
 ## Technical Details
 
-Generates BWF-compliant WAV files with:
-- **Cue chunks**: WAV markers at CSV timecode positions
-- **LIST/adtl chunks**: Marker labels from selected CSV fields
-- **bext chunk**: BWF TimeReference for accurate timeline positioning
+**Automation Process:**
+1. Analyzes CSV to find earliest timecode
+2. Calculates session start (rounds down to nearest hour: 00:00:00:00, 01:00:00:00, etc.)
+3. Uses AppleScript to position Logic Pro playhead at calculated start
+4. Creates new audio track
+5. Imports marker file with embedded BWF markers
+6. Extracts markers from audio file into Logic's marker list via Navigate > Other > Import Marker from Audio File
 
-Logic Pro reads the BWF TimeReference to position the file at timeline 00:00:00:00, then places markers at their correct positions relative to your project's SMPTE offset.
+**WAV File Format:**
+- **Cue chunks**: Markers at CSV timecode positions
+- **LIST/adtl chunks**: Marker labels from selected CSV fields
 
 ## Troubleshooting
 
 ### Markers at wrong positions
 
-The app uses BWF TimeReference to ensure correct positioning. Markers appear at CSV timecodes + your project's SMPTE offset.
+The app calculates the session start timecode from your CSV data. Ensure your CSV timecodes are accurate.
 
-Example: CSV marker `00:00:10:00` + project start `01:00:00:00` = marker at `01:00:10:00`
+Example: CSV with earliest marker at 01:05:30:00 → session starts at 01:00:00:00
 
-If markers are still incorrect, verify your project sample rate matches 44.1kHz.
+### Accessibility Permission Denied
 
-### Import issues
-
-Use **Navigate > Other > Import Marker from Audio File** in Logic Pro. Test WAV files in Audacity first to verify cue points are embedded correctly.
+If automation fails, enable Accessibility permission:
+**System Settings > Privacy & Security > Accessibility** → Add your app (Terminal/VS Code/etc.)

@@ -207,7 +207,8 @@ function createListChunk(markers) {
 
   markers.forEach((marker, index) => {
     const label = marker.name;
-    const labelLength = label.length + 1; // +1 for null terminator
+    const labelByteLength = Buffer.byteLength(label, 'utf8'); // Actual byte length of label
+    const labelLength = labelByteLength + 1; // +1 for null terminator
     const paddedLength = labelLength + (labelLength % 2); // Pad to even length
 
     // Buffer needs: 4 (chunk ID) + 4 (size) + 4 (cue ID) + paddedLength (label + null + padding)
@@ -216,7 +217,7 @@ function createListChunk(markers) {
     subChunk.writeUInt32LE(4 + paddedLength, 4); // Subchunk size (cue ID + label data)
     subChunk.writeUInt32LE(index + 1, 8); // Cue point ID
     subChunk.write(label, 12); // Label text
-    subChunk.writeUInt8(0, 12 + label.length); // Null terminator right after label
+    subChunk.writeUInt8(0, 12 + labelByteLength); // Null terminator right after label (using byte length!)
 
     subChunks.push(subChunk);
   });
