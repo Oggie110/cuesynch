@@ -211,6 +211,3 @@ Enable Accessibility for the calling app in System Settings.
 
 Part of CueSynch - same license as parent project.
 
-## Credits
-
-Inspired by [Soundflow](https://soundflow.org/)'s approach to reliable DAW automation using macOS Accessibility API.

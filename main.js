@@ -112,7 +112,7 @@ ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, sel
 
     const frameRateInfo = frameRate ? ` (${frameRate} fps)` : '';
 
-    // Try to import into Logic Pro using AX API (Soundflow approach)
+    // Try to import into Logic Pro using AX API
     try {
       // Use execFileSync instead of execSync to bypass shell and preserve Swedish characters
       const { execFileSync } = require('child_process');
