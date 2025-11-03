@@ -112,103 +112,41 @@ ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, sel
 
     const frameRateInfo = frameRate ? ` (${frameRate} fps)` : '';
 
-    // Try to import into Logic Pro using keyboard shortcut
+    // Try to import into Logic Pro using AX API (Soundflow approach)
     try {
-      const { exec } = require('child_process');
+      // Use execFileSync instead of execSync to bypass shell and preserve Swedish characters
+      const { execFileSync } = require('child_process');
 
       // Get just the directory path and filename separately
       // Normalize to NFC (composed form) to handle Swedish characters (Å, Ä, Ö) properly
       const dirPath = path.dirname(filePath).normalize('NFC');
       const fileName = path.basename(filePath).normalize('NFC');
 
-      console.log('=== IMPORT AUTOMATION DEBUG ===');
+      console.log('=== AX API AUTOMATION DEBUG ===');
       console.log('Full filePath:', filePath);
       console.log('Directory path:', dirPath);
       console.log('Filename:', fileName);
+      console.log('Start timecode:', startTimecode);
 
-      // Create AppleScript content
-      const appleScript = `
-        tell application "System Events"
-          if not (exists process "Logic Pro") then
-            return "Logic Pro not running"
-          end if
-        end tell
+      // Use AX API for ALL Logic Pro interactions (100% reliable)
+      const axDriverPath = path.join(__dirname, 'ax-driver-poc', '.build', 'release', 'logic-ax');
+      console.log('Running complete AX workflow...');
 
-        tell application "Logic Pro"
-          activate
-        end tell
-
-        delay 1
-
-        tell application "System Events"
-          tell process "Logic Pro"
-            -- Open "Go to Position" dialog and set playhead to start timecode
-            keystroke "/"
-            delay 0.5
-            keystroke "${startTimecode}"
-            delay 0.3
-            keystroke return
-
-            delay 0.5
-
-            -- Create new audio track
-            keystroke "a" using {option down, command down}
-
-            delay 1
-
-            -- Press Shift+Command+I to open import dialog
-            keystroke "i" using {shift down, command down}
-
-            delay 2
-
-            -- Navigate to folder in open dialog
-            keystroke "g" using {command down, shift down}
-            delay 0.5
-            keystroke "${dirPath}"
-            delay 0.5
-            keystroke return
-
-            delay 1
-
-            -- Type filename to select it
-            keystroke "${fileName}"
-            delay 0.5
-            keystroke return
-
-            delay 2
-
-            -- After import completes, trigger "Import Marker from Audio File" on the imported region
-            click menu item "Import Marker from Audio File" of menu 1 of menu item "Other" of menu "Navigate" of menu bar 1
-
-            delay 1
-
-            return "success"
-          end tell
-        end tell
-      `;
-
-      // Write AppleScript to temporary file
-      const tempScript = path.join(os.tmpdir(), 'cuesynch-import.applescript');
-      fs.writeFileSync(tempScript, appleScript);
-
-      // Execute the temporary file
-      exec(`osascript "${tempScript}"`, (error, stdout, stderr) => {
-        // Clean up temp file
-        try {
-          fs.unlinkSync(tempScript);
-        } catch (cleanupError) {
-          console.log('Error cleaning up temp file:', cleanupError);
-        }
-
-        if (error) {
-          console.log('AppleScript import automation failed:', error);
-        } else {
-          console.log('Import automated successfully:', stdout);
-        }
-      });
+      try {
+        // Run the complete workflow: playhead + track + file import + marker import
+        // Use array form to pass arguments directly without shell interpretation
+        execFileSync(axDriverPath, ['workflow', startTimecode, dirPath, fileName], {
+          encoding: 'utf-8',
+          stdio: 'inherit'
+        });
+        console.log('✓ Complete automation workflow finished successfully via AX API');
+      } catch (axError) {
+        console.log('AX workflow failed:', axError.message);
+        throw axError;
+      }
 
     } catch (error) {
-      console.log('Error with import automation:', error);
+      console.log('Error with AX automation:', error);
     }
 
     return {
