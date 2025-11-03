@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CueSynch</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 90%;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .drop-zone {
+      border: 3px dashed #667eea;
+      border-radius: 15px;
+      padding: 60px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: #f8f9ff;
+    }
+
+    .drop-zone:hover {
+      border-color: #764ba2;
+      background: #f0f1ff;
+    }
+
+    .drop-zone.drag-over {
+      border-color: #764ba2;
+      background: #e8e9ff;
+      transform: scale(1.02);
+    }
+
+    .drop-zone-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .drop-zone-text {
+      color: #667eea;
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone-hint {
+      color: #999;
+      font-size: 13px;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 10px;
+      display: none;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.processing {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .csv-format {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      font-size: 12px;
+    }
+
+    .csv-format h3 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .csv-format pre {
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      overflow-x: auto;
+      color: #555;
+      border: 1px solid #dee2e6;
+    }
+
+    .csv-format p {
+      margin-top: 10px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .frame-rate-selector {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f8f9ff;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .frame-rate-label {
+      color: #667eea;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .frame-rate-select {
+      padding: 8px 12px;
+      border: 2px solid #667eea;
+      border-radius: 8px;
+      background: white;
+      color: #333;
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .frame-rate-select:hover {
+      border-color: #764ba2;
+    }
+
+    .frame-rate-select:focus {
+      border-color: #764ba2;
+      box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      background: white;
+      border-radius: 15px;
+      padding: 20px 30px;
+      max-width: 95%;
+      width: 95%;
+      max-height: none;
+      overflow-y: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      margin-bottom: 15px;
+    }
+
+    .modal-title {
+      color: #333;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .modal-subtitle {
+      color: #666;
+      font-size: 13px;
+    }
+
+    .field-list {
+      margin: 12px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .field-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 14px;
+      background: #f8f9ff;
+      border-radius: 8px;
+      transition: background 0.2s ease;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .field-item:hover {
+      background: #f0f1ff;
+    }
+
+    .field-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 12px;
+      cursor: pointer;
+      accent-color: #667eea;
+    }
+
+    .field-label {
+      color: #333;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: #f0f1ff;
+      color: #667eea;
+    }
+
+    .btn-secondary:hover {
+      background: #e8e9ff;
+    }
+
+    .preview-box {
+      margin: 12px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+
+    .preview-title {
+      color: #667eea;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preview-content {
+      color: #333;
+      font-size: 13px;
+      font-family: 'Monaco', 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>CSV to Logic Markers</h1>
+    <p class="subtitle">Convert CSV files to Logic Pro marker audio files</p>
+
+    <div class="frame-rate-selector">
+      <label class="frame-rate-label" for="frameRate">Frame Rate:</label>
+      <select id="frameRate" class="frame-rate-select">
+        <option value="auto" selected>Auto Detect</option>
+        <option value="23.976">23.976 fps (Film)</option>
+        <option value="24">24 fps (Film)</option>
+        <option value="25">25 fps (PAL)</option>
+        <option value="29.97">29.97 fps (NTSC)</option>
+        <option value="30">30 fps (NTSC)</option>
+        <option value="50">50 fps</option>
+        <option value="60">60 fps</option>
+      </select>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-icon">📄</div>
+      <div class="drop-zone-text">Drop CSV file here</div>
+      <div class="drop-zone-hint">or click to browse</div>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="csv-format">
+      <h3>CSV Format</h3>
+      <pre>time,name
+0,Intro
+10.5,Verse 1
+1:30,Chorus
+0:01:30:15,Bridge</pre>
+      <p>Time formats: seconds (10.5), MM:SS (1:30), HH:MM:SS (0:01:30), or HH:MM:SS:FF (0:01:30:15) with frames</p>
+    </div>
+  </div>
+
+  <!-- Field Selector Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Select Fields for Markers</h2>
+        <p class="modal-subtitle">Choose which columns to include in the marker names</p>
+      </div>
+
+      <div class="frame-rate-selector" style="margin-bottom: 10px;">
+        <label class="frame-rate-label" for="timeColumnSelect">Time Column:</label>
+        <select id="timeColumnSelect" class="frame-rate-select">
+          <!-- Options will be populated dynamically -->
+        </select>
+      </div>
+
+      <div class="preview-box" id="previewBox">
+        <div class="preview-title">Marker Name Preview</div>
+        <div class="preview-content" id="previewContent">Select fields to see preview...</div>
+      </div>
+
+      <div class="modal-subtitle" style="margin: 10px 0 8px 0; font-weight: 600; color: #667eea;">
+        Include in Marker Names:
+      </div>
+
+      <div class="field-list" id="fieldList">
+        <!-- Fields will be populated dynamically -->
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="generateBtn" disabled>Generate WAV</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept=".csv" style="display: none;">
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const status = document.getElementById('status');
+    const frameRateSelect = document.getElementById('frameRate');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const fieldList = document.getElementById('fieldList');
+    const previewContent = document.getElementById('previewContent');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const timeColumnSelect = document.getElementById('timeColumnSelect');
+
+    let currentData = null;
+
+    // Click to browse
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
+    });
+
+    // Modal buttons
+    cancelBtn.addEventListener('click', closeModal);
+    generateBtn.addEventListener('click', generateWAVFile);
+
+    async function handleFile(file) {
+      if (!file.name.endsWith('.csv')) {
+        showStatus('Please select a CSV file', 'error');
+        return;
+      }
+
+      showStatus('Analyzing CSV file...', 'processing');
+
+      try {
+        // Get selected frame rate
+        const frameRate = frameRateSelect.value;
+        const result = await window.electronAPI.analyzeCSV(file.path, frameRate);
+
+        if (result.success) {
+          currentData = result;
+          showFieldSelector(result);
+          status.style.display = 'none';
+        } else {
+          showStatus(result.message, 'error');
+        }
+      } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    function showFieldSelector(data) {
+      // Populate time column selector
+      timeColumnSelect.innerHTML = '';
+
+      // Find best time column candidate
+      const timeColumnCandidates = data.headers.filter(h =>
+        h.toLowerCase().includes('time') ||
+        h.toLowerCase().includes('tc') ||
+        h.toLowerCase().includes('timecode')
+      );
+
+      // Add all headers to time column selector
+      data.headers.forEach(header => {
+        const option = document.createElement('option');
+        option.value = header;
+        option.textContent = header;
+
+        // Pre-select the best time column
+        if (timeColumnCandidates.length > 0) {
+          // Prefer columns with "in" in them for start times
+          const inColumns = timeColumnCandidates.filter(h =>
+            h.toLowerCase().includes('in') && !h.toLowerCase().includes('source')
+          );
+          const bestCandidate = inColumns.length > 0 ? inColumns[0] : timeColumnCandidates[0];
+          option.selected = header === bestCandidate;
+        } else {
+          option.selected = header === data.headers[0];
+        }
+
+        timeColumnSelect.appendChild(option);
+      });
+
+      // Listen for time column changes
+      timeColumnSelect.onchange = () => {
+        populateFieldList();
+      };
+
+      // Initial field list population
+      populateFieldList();
+
+      modalOverlay.classList.add('active');
+    }
+
+    function populateFieldList() {
+      // Clear previous fields
+      fieldList.innerHTML = '';
+
+      const timeColumn = timeColumnSelect.value;
+
+      // Create checkboxes for each field (excluding selected time column)
+      currentData.headers.forEach(header => {
+        const isTimeColumn = header === timeColumn;
+
+        // Skip time column entirely
+        if (isTimeColumn) return;
+
+        const fieldItem = document.createElement('div');
+        fieldItem.className = 'field-item';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `field-${header}`;
+        checkbox.value = header;
+        checkbox.checked = false; // Uncheck all by default
+
+        const label = document.createElement('label');
+        label.className = 'field-label';
+        label.htmlFor = `field-${header}`;
+        label.textContent = header;
+
+        fieldItem.appendChild(checkbox);
+        fieldItem.appendChild(label);
+
+        // Click on item to toggle checkbox
+        fieldItem.addEventListener('click', (e) => {
+          if (e.target !== checkbox) {
+            checkbox.checked = !checkbox.checked;
+            updatePreview();
+          }
+        });
+
+        checkbox.addEventListener('change', updatePreview);
+
+        fieldList.appendChild(fieldItem);
+      });
+
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const checkboxes = fieldList.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)');
+      const selectedFields = Array.from(checkboxes).map(cb => cb.value);
+
+      generateBtn.disabled = selectedFields.length === 0;
+
+      if (currentData && currentData.rows.length > 0 && selectedFields.length > 0) {
+        // Show preview of first marker
+        const values = selectedFields.map(field => currentData.rows[0][field]).filter(v => v);
+        previewContent.textContent = values.join(' - ');
+      } else if (selectedFields.length === 0) {
+        previewContent.textContent = 'Select at least one field';
+      } else {
+        previewContent.textContent = 'Select fields to see preview...';
+      }
+    }
+
+    async function generateWAVFile() {
+      const checkboxes = fieldList.querySelectorAll('input[type="checkbox"]:checked');
+      const selectedFields = Array.from(checkboxes).map(cb => cb.value);
+      const timeColumn = timeColumnSelect.value;
+
+      if (selectedFields.length === 0) {
+        return;
+      }
+
+      // Store data before closing modal (which nulls currentData)
+      const csvPath = currentData.csvPath;
+      const frameRate = currentData.frameRate;
+
+      closeModal();
+      showStatus('Generating WAV file...', 'processing');
+
+      try {
+        const result = await window.electronAPI.generateWAV(
+          csvPath,
+          frameRate,
+          timeColumn,
+          selectedFields
+        );
+
+        if (result.success) {
+          showStatus(result.message, 'success');
+        } else {
+          showStatus(result.message, 'error');
+        }
+      } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+      }
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('active');
+      currentData = null;
+    }
+
+    function showStatus(message, type) {
+      status.textContent = message;
+      status.className = `status ${type}`;
+      status.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
