@@ -207,7 +207,7 @@ function createListChunk(markers) {
 
   markers.forEach((marker, index) => {
     const label = marker.name;
-    const labelLength = label.length + 1; // +1 for null terminator
+    const labelLength = Buffer.byteLength(label, 'utf8') + 1; // +1 for null terminator
     const paddedLength = labelLength + (labelLength % 2); // Pad to even length
 
     // Buffer needs: 4 (chunk ID) + 4 (size) + 4 (cue ID) + paddedLength (label + null + padding)
