@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { generateWavWithMarkers } = require('./wav-generator');
 
 let mainWindow;
@@ -73,7 +74,7 @@ ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, sel
     // Read and parse CSV
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
-    const markers = parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields);
+    const { markers, startTimecode } = parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields);
 
     // Determine default filename and directory
     const csvDir = path.dirname(csvPath);
@@ -111,9 +112,101 @@ ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, sel
 
     const frameRateInfo = frameRate ? ` (${frameRate} fps)` : '';
 
+    // Try to import into Logic Pro using keyboard shortcut
+    try {
+      const { exec } = require('child_process');
+
+      // Get just the directory path and filename separately
+      // Normalize to NFC (composed form) to handle Swedish characters (Å, Ä, Ö) properly
+      const dirPath = path.dirname(filePath).normalize('NFC');
+      const fileName = path.basename(filePath).normalize('NFC');
+
+      console.log('=== IMPORT AUTOMATION DEBUG ===');
+      console.log('Full filePath:', filePath);
+      console.log('Directory path:', dirPath);
+      console.log('Filename:', fileName);
+
+      // Create AppleScript content
+      const appleScript = `
+        tell application "System Events"
+          if not (exists process "Logic Pro") then
+            return "Logic Pro not running"
+          end if
+        end tell
+
+        tell application "Logic Pro"
+          activate
+        end tell
+
+        delay 1
+
+        tell application "System Events"
+          tell process "Logic Pro"
+            -- Open "Go to Position" dialog and set playhead to start timecode
+            keystroke "/"
+            delay 0.5
+            keystroke "${startTimecode}"
+            delay 0.3
+            keystroke return
+
+            delay 0.5
+
+            -- Create new audio track
+            keystroke "a" using {option down, command down}
+
+            delay 1
+
+            -- Press Shift+Command+I to open import dialog
+            keystroke "i" using {shift down, command down}
+
+            delay 2
+
+            -- Navigate to folder in open dialog
+            keystroke "g" using {command down, shift down}
+            delay 0.5
+            keystroke "${dirPath}"
+            delay 0.5
+            keystroke return
+
+            delay 1
+
+            -- Type filename to select it
+            keystroke "${fileName}"
+            delay 0.5
+            keystroke return
+
+            return "success"
+          end tell
+        end tell
+      `;
+
+      // Write AppleScript to temporary file
+      const tempScript = path.join(os.tmpdir(), 'cuesynch-import.applescript');
+      fs.writeFileSync(tempScript, appleScript);
+
+      // Execute the temporary file
+      exec(`osascript "${tempScript}"`, (error, stdout, stderr) => {
+        // Clean up temp file
+        try {
+          fs.unlinkSync(tempScript);
+        } catch (cleanupError) {
+          console.log('Error cleaning up temp file:', cleanupError);
+        }
+
+        if (error) {
+          console.log('AppleScript import automation failed:', error);
+        } else {
+          console.log('Import automated successfully:', stdout);
+        }
+      });
+
+    } catch (error) {
+      console.log('Error with import automation:', error);
+    }
+
     return {
       success: true,
-      message: `Markers file created successfully${frameRateInfo} at:\n${filePath}\n\nTo import into Logic Pro:\n1. Open your Logic Pro project\n2. Go to Navigate > Other > Import Marker from Audio File\n3. Select the generated WAV file`
+      message: `Markers file created successfully${frameRateInfo} at:\n${filePath}\n\nAutomatically importing to Logic Pro...`
     };
   } catch (error) {
     return {
@@ -202,6 +295,7 @@ function parseCSVWithHeaders(csvContent) {
 function parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields) {
   const { headers, rows } = parseCSVWithHeaders(csvContent);
   const markers = [];
+  let earliestTime = null;
 
   console.log('=== CSV PARSING DEBUG ===');
   console.log('Time Column:', timeColumn);
@@ -221,6 +315,11 @@ function parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedF
 
     if (time === null) continue;
 
+    // Track earliest time
+    if (earliestTime === null || time < earliestTime) {
+      earliestTime = time;
+    }
+
     // Build marker name from selected fields
     const nameParts = selectedFields
       .map(field => row[field])
@@ -238,7 +337,16 @@ function parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedF
   // Sort markers by time
   markers.sort((a, b) => a.time - b.time);
 
-  return markers;
+  // Calculate start timecode from earliest marker time
+  let startTimecode = '00 00 00 00'; // Default
+  if (earliestTime !== null) {
+    const hours = Math.floor(earliestTime / 3600);
+    const startHour = Math.floor(hours); // Round down to nearest hour
+    startTimecode = String(startHour).padStart(2, '0') + ' 00 00 00';
+    console.log('Calculated start timecode:', startTimecode, 'from earliest time:', earliestTime, 'seconds');
+  }
+
+  return { markers, startTimecode };
 }
 
 function parseCSVLine(line) {
