@@ -7,8 +7,8 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 650,
+    width: 1400,
+    height: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -68,17 +68,35 @@ ipcMain.handle('analyze-csv', async (event, csvPath, frameRate) => {
 });
 
 // Generate WAV file with selected fields
-ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, selectedFields) => {
+ipcMain.handle('generate-wav', async (event, csvPath, frameRate, timeColumn, selectedFields, fileNameField, firstRowValue) => {
   try {
     // Read and parse CSV
     const csvContent = fs.readFileSync(csvPath, 'utf-8');
 
     const markers = parseCSVWithSelectedFields(csvContent, frameRate, timeColumn, selectedFields);
 
+    // Determine default filename and directory
+    const csvDir = path.dirname(csvPath);
+    let defaultFileName = 'Marker-list.wav';
+
+    if (fileNameField && firstRowValue) {
+      // Remove any existing file extensions FIRST
+      let processed = firstRowValue.replace(/\.(mp4|mov|wav|aiff|m4a|mp3|aif)$/i, '');
+
+      // Then sanitize the filename (remove invalid characters)
+      let sanitized = processed.replace(/[^a-z0-9_\-\s]/gi, '_').trim();
+
+      if (sanitized) {
+        defaultFileName = `${sanitized}_marker_list.wav`;
+      }
+    }
+
+    const defaultPath = path.join(csvDir, defaultFileName);
+
     // Ask user where to save the WAV file
     const { filePath } = await dialog.showSaveDialog(mainWindow, {
       title: 'Save Marker Audio File',
-      defaultPath: 'markers.wav',
+      defaultPath: defaultPath,
       filters: [
         { name: 'WAV Files', extensions: ['wav'] }
       ]

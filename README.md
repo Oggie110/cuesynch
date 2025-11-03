@@ -7,8 +7,10 @@ macOS app that converts CSV timecode files to BWF (Broadcast Wave Format) audio 
 - Multiple timecode formats: seconds, MM:SS, HH:MM:SS, HH:MM:SS:FF
 - Smart frame rate detection (24, 25, 30, 50, 60 fps)
 - Multi-column CSV support with field selection
+- Smart filename generation from CSV fields
 - BWF TimeReference for accurate timeline positioning
 - Works with Logic Pro's SMPTE offset settings
+- UTF-8 marker label support
 
 ## Installation
 
@@ -34,9 +36,14 @@ npm start
    - Selected fields will be joined with " - " in the marker name
    - Preview shows how the first marker will look in real-time
 
-5. Choose where to save the generated WAV file
+5. **Smart file naming**:
+   - Choose a CSV field (like "File", "Project", "Title") to automatically name your WAV file
+   - Or click "Use Custom Name" to enter your own filename
+   - Automatically removes file extensions and adds "_marker_list.wav"
 
-6. Import the WAV file into Logic Pro:
+6. Choose where to save the generated WAV file (defaults to CSV location)
+
+7. Import the WAV file into Logic Pro:
    - Open your Logic Pro project
    - Go to **Navigate > Other > Import Marker from Audio File**
    - Select the generated WAV file

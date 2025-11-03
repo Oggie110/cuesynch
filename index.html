@@ -359,7 +359,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>CSV to Logic Markers</h1>
+    <h1>CueSynch</h1>
     <p class="subtitle">Convert CSV files to Logic Pro marker audio files</p>
 
     <div class="frame-rate-selector">
@@ -383,49 +383,68 @@
     </div>
 
     <div class="status" id="status"></div>
-
-    <div class="csv-format">
-      <h3>CSV Format</h3>
-      <pre>time,name
-0,Intro
-10.5,Verse 1
-1:30,Chorus
-0:01:30:15,Bridge</pre>
-      <p>Time formats: seconds (10.5), MM:SS (1:30), HH:MM:SS (0:01:30), or HH:MM:SS:FF (0:01:30:15) with frames</p>
-    </div>
   </div>
 
   <!-- Field Selector Modal -->
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
-      <div class="modal-header">
-        <h2 class="modal-title">Select Fields for Markers</h2>
-        <p class="modal-subtitle">Choose which columns to include in the marker names</p>
+      <!-- Step 1: Field Selection -->
+      <div id="fieldSelectionStep">
+        <div class="modal-header">
+          <h2 class="modal-title">Select Fields for Markers</h2>
+          <p class="modal-subtitle">Choose which columns to include in the marker names</p>
+        </div>
+
+        <div class="frame-rate-selector" style="margin-bottom: 10px;">
+          <label class="frame-rate-label" for="timeColumnSelect">Time Column:</label>
+          <select id="timeColumnSelect" class="frame-rate-select">
+            <!-- Options will be populated dynamically -->
+          </select>
+        </div>
+
+        <div class="preview-box" id="previewBox">
+          <div class="preview-title">Marker Name Preview</div>
+          <div class="preview-content" id="previewContent">Select fields to see preview...</div>
+        </div>
+
+        <div class="modal-subtitle" style="margin: 10px 0 8px 0; font-weight: 600; color: #667eea;">
+          Include in Marker Names:
+        </div>
+
+        <div class="field-list" id="fieldList">
+          <!-- Fields will be populated dynamically -->
+        </div>
+
+        <div class="modal-buttons">
+          <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+          <button class="btn btn-primary" id="nextToFileNameBtn" disabled>Next: File Name</button>
+        </div>
       </div>
 
-      <div class="frame-rate-selector" style="margin-bottom: 10px;">
-        <label class="frame-rate-label" for="timeColumnSelect">Time Column:</label>
-        <select id="timeColumnSelect" class="frame-rate-select">
-          <!-- Options will be populated dynamically -->
-        </select>
-      </div>
+      <!-- Step 2: File Naming -->
+      <div id="fileNamingStep" style="display: none;">
+        <div class="modal-header">
+          <h2 class="modal-title">Choose File Name</h2>
+          <p class="modal-subtitle">Select a field to use for the file name, or use a custom name</p>
+        </div>
 
-      <div class="preview-box" id="previewBox">
-        <div class="preview-title">Marker Name Preview</div>
-        <div class="preview-content" id="previewContent">Select fields to see preview...</div>
-      </div>
+        <div class="modal-subtitle" style="margin: 10px 0 8px 0; font-weight: 600; color: #667eea;">
+          Suggested Fields:
+        </div>
 
-      <div class="modal-subtitle" style="margin: 10px 0 8px 0; font-weight: 600; color: #667eea;">
-        Include in Marker Names:
-      </div>
+        <div class="field-list" id="fileNameFieldList">
+          <!-- Fields will be populated dynamically -->
+        </div>
 
-      <div class="field-list" id="fieldList">
-        <!-- Fields will be populated dynamically -->
-      </div>
+        <div id="showAllFieldsContainer" style="text-align: center; margin: 10px 0;">
+          <button class="btn btn-secondary" id="showAllFieldsBtn" style="max-width: 200px;">Show All Fields</button>
+        </div>
 
-      <div class="modal-buttons">
-        <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
-        <button class="btn btn-primary" id="generateBtn" disabled>Generate WAV</button>
+        <div class="modal-buttons">
+          <button class="btn btn-secondary" id="backToFieldsBtn">Back</button>
+          <button class="btn btn-secondary" id="useCustomNameBtn">Use Custom Name</button>
+          <button class="btn btn-primary" id="generateBtn" disabled>Generate WAV</button>
+        </div>
       </div>
     </div>
   </div>
@@ -443,8 +462,17 @@
     const cancelBtn = document.getElementById('cancelBtn');
     const generateBtn = document.getElementById('generateBtn');
     const timeColumnSelect = document.getElementById('timeColumnSelect');
+    const nextToFileNameBtn = document.getElementById('nextToFileNameBtn');
+    const backToFieldsBtn = document.getElementById('backToFieldsBtn');
+    const useCustomNameBtn = document.getElementById('useCustomNameBtn');
+    const showAllFieldsBtn = document.getElementById('showAllFieldsBtn');
+    const fieldSelectionStep = document.getElementById('fieldSelectionStep');
+    const fileNamingStep = document.getElementById('fileNamingStep');
+    const fileNameFieldList = document.getElementById('fileNameFieldList');
 
     let currentData = null;
+    let selectedFileNameField = null;
+    let showingAllFileNameFields = false;
 
     // Click to browse
     dropZone.addEventListener('click', () => {
@@ -479,6 +507,10 @@
 
     // Modal buttons
     cancelBtn.addEventListener('click', closeModal);
+    nextToFileNameBtn.addEventListener('click', showFileNamingStep);
+    backToFieldsBtn.addEventListener('click', showFieldSelectionStep);
+    useCustomNameBtn.addEventListener('click', useCustomFileName);
+    showAllFieldsBtn.addEventListener('click', toggleAllFileNameFields);
     generateBtn.addEventListener('click', generateWAVFile);
 
     async function handleFile(file) {
@@ -614,7 +646,7 @@
       const checkboxes = fieldList.querySelectorAll('input[type="checkbox"]:checked:not(:disabled)');
       const selectedFields = Array.from(checkboxes).map(cb => cb.value);
 
-      generateBtn.disabled = selectedFields.length === 0;
+      nextToFileNameBtn.disabled = selectedFields.length === 0;
 
       if (currentData && currentData.rows.length > 0 && selectedFields.length > 0) {
         // Show preview of first marker
@@ -625,6 +657,114 @@
       } else {
         previewContent.textContent = 'Select fields to see preview...';
       }
+    }
+
+    function showFileNamingStep() {
+      fieldSelectionStep.style.display = 'none';
+      fileNamingStep.style.display = 'block';
+      populateFileNameFields(false); // Start with suggested fields only
+    }
+
+    function showFieldSelectionStep() {
+      fileNamingStep.style.display = 'none';
+      fieldSelectionStep.style.display = 'block';
+      showingAllFileNameFields = false;
+      showAllFieldsBtn.textContent = 'Show All Fields'; // Reset button text
+    }
+
+    function populateFileNameFields(showAll) {
+      fileNameFieldList.innerHTML = '';
+      selectedFileNameField = null;
+      generateBtn.disabled = true;
+
+      const timeColumn = timeColumnSelect.value;
+
+      // Common field names that might contain file/project names
+      const suggestedPatterns = [
+        'file', 'filename', 'file name', 'name', 'project', 'projectname',
+        'project name', 'title', 'scene', 'episode', 'show', 'reel'
+      ];
+
+      let fieldsToShow = [];
+
+      if (showAll) {
+        // Show all fields except time column
+        fieldsToShow = currentData.headers.filter(h => h !== timeColumn);
+        showAllFieldsBtn.style.display = 'block';
+      } else {
+        // Show only suggested fields
+        fieldsToShow = currentData.headers.filter(header => {
+          if (header === timeColumn) return false;
+          const headerLower = header.toLowerCase();
+          return suggestedPatterns.some(pattern => headerLower.includes(pattern));
+        });
+
+        // If no suggested fields found, show all and hide the toggle button
+        if (fieldsToShow.length === 0) {
+          fieldsToShow = currentData.headers.filter(h => h !== timeColumn);
+          showAllFieldsBtn.style.display = 'none';
+        } else {
+          showAllFieldsBtn.style.display = 'block';
+        }
+      }
+
+      fieldsToShow.forEach(header => {
+        const fieldItem = document.createElement('div');
+        fieldItem.className = 'field-item';
+        fieldItem.style.cursor = 'pointer';
+        fieldItem.dataset.fieldName = header;
+
+        const label = document.createElement('div');
+        label.className = 'field-label';
+        label.textContent = header;
+        fieldItem.appendChild(label);
+
+        // Add sample data preview
+        if (currentData.rows && currentData.rows.length > 0) {
+          const sampleValue = currentData.rows[0][header] || '';
+          const sampleText = document.createElement('div');
+          sampleText.className = 'field-sample';
+          sampleText.textContent = `"${sampleValue}"`;
+          sampleText.title = sampleValue;
+          sampleText.style.marginLeft = '0';
+          fieldItem.appendChild(sampleText);
+        }
+
+        fieldItem.addEventListener('click', () => {
+          // Remove selection from all items
+          fileNameFieldList.querySelectorAll('.field-item').forEach(item => {
+            item.style.background = '#f8f9ff';
+            item.style.border = 'none';
+          });
+
+          // Highlight selected item
+          fieldItem.style.background = '#e8e9ff';
+          fieldItem.style.border = '2px solid #667eea';
+          fieldItem.style.borderRadius = '8px';
+
+          selectedFileNameField = header;
+          generateBtn.disabled = false;
+        });
+
+        fileNameFieldList.appendChild(fieldItem);
+      });
+    }
+
+    function toggleAllFileNameFields() {
+      showingAllFileNameFields = !showingAllFileNameFields;
+      populateFileNameFields(showingAllFileNameFields);
+
+      // Update button text
+      if (showingAllFileNameFields) {
+        showAllFieldsBtn.textContent = 'Show Suggested Fields';
+      } else {
+        showAllFieldsBtn.textContent = 'Show All Fields';
+      }
+    }
+
+    function useCustomFileName() {
+      selectedFileNameField = null;
+      generateBtn.disabled = false;
     }
 
     async function generateWAVFile() {
@@ -639,6 +779,10 @@
       // Store data before closing modal (which nulls currentData)
       const csvPath = currentData.csvPath;
       const frameRate = currentData.frameRate;
+      const fileNameField = selectedFileNameField;
+      const firstRowValue = fileNameField && currentData.rows.length > 0
+        ? currentData.rows[0][fileNameField]
+        : null;
 
       closeModal();
       showStatus('Generating WAV file...', 'processing');
@@ -648,7 +792,9 @@
           csvPath,
           frameRate,
           timeColumn,
-          selectedFields
+          selectedFields,
+          fileNameField,
+          firstRowValue
         );
 
         if (result.success) {
@@ -663,7 +809,11 @@
 
     function closeModal() {
       modalOverlay.classList.remove('active');
+      fieldSelectionStep.style.display = 'block';
+      fileNamingStep.style.display = 'none';
       currentData = null;
+      selectedFileNameField = null;
+      showingAllFileNameFields = false;
     }
 
     function showStatus(message, type) {
