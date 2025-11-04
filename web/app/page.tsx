@@ -340,6 +340,11 @@ export default function Home() {
                 <span>Markers will appear at their correct timestamps!</span>
               </li>
             </ol>
+            <div className="mt-4 bg-slate-700/50 rounded-lg p-3 border border-slate-600">
+              <p className="text-xs text-slate-300">
+                <strong className="text-slate-200">Note:</strong> This tool may also work with other DAWs and audio editors that support WAV marker metadata. It has been tested and confirmed to work with <strong>Adobe Audition</strong>, which automatically imports the marker metadata.
+              </p>
+            </div>
           </div>
         )}
       </div>
