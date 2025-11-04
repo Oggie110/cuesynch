@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
     const sanitized = originalName.replace(/[^a-z0-9_\-\s]/gi, '_').trim();
     const filename = sanitized ? `${sanitized}_marker_list.wav` : 'marker_list.wav';
 
-    // Return WAV file
-    return new NextResponse(wavBuffer, {
+    // Return WAV file (convert Buffer to Uint8Array for web standards compatibility)
+    const uint8Array = new Uint8Array(wavBuffer);
+    return new Response(uint8Array, {
       headers: {
         'Content-Type': 'audio/wav',
         'Content-Disposition': `attachment; filename="${filename}"`,
