@@ -137,6 +137,12 @@ export default function Home() {
     return parts.join(' - ') || 'Marker';
   };
 
+  const getTimecodePreview = () => {
+    if (!csvData?.rows || csvData.rows.length === 0 || !timeColumn) return [];
+    // Get first 3 timecode samples from the selected time column
+    return csvData.rows.slice(0, 3).map(row => row[timeColumn]).filter(Boolean);
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8">
       <div className="max-w-4xl mx-auto">
@@ -150,12 +156,12 @@ export default function Home() {
         </header>
 
         {/* Frame Rate Selector */}
-        <div className="bg-slate-800 rounded-lg p-6 mb-6 border border-slate-700">
-          <label className="block mb-2 font-semibold text-slate-200">Frame Rate</label>
+        <div className="bg-slate-800 rounded-lg p-5 mb-5 border border-slate-700">
+          <label className="block mb-1.5 font-semibold text-slate-200 text-sm">Frame Rate</label>
           <select
             value={frameRate}
             onChange={(e) => setFrameRate(e.target.value)}
-            className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="auto">Auto Detect</option>
             <option value="23.976">23.976 fps (Film)</option>
@@ -173,7 +179,7 @@ export default function Home() {
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
-          className={`bg-slate-800 rounded-lg p-12 mb-6 border-2 border-dashed transition-all cursor-pointer ${
+          className={`bg-slate-800 rounded-lg p-10 mb-5 border-2 border-dashed transition-all cursor-pointer ${
             file ? 'border-green-500' : 'border-slate-600 hover:border-blue-500'
           }`}
         >
@@ -187,15 +193,15 @@ export default function Home() {
           <div className="text-center">
             {file ? (
               <>
-                <div className="text-4xl mb-4">✓</div>
-                <p className="text-xl font-semibold text-green-400 mb-2">{file.name}</p>
-                <p className="text-slate-400">Click to choose a different file</p>
+                <div className="text-3xl mb-3">✓</div>
+                <p className="text-lg font-semibold text-green-400 mb-1.5">{file.name}</p>
+                <p className="text-slate-400 text-sm">Click to choose a different file</p>
               </>
             ) : (
               <>
-                <div className="text-6xl mb-4">📁</div>
-                <p className="text-xl font-semibold mb-2">Drop CSV file here</p>
-                <p className="text-slate-400">or click to browse</p>
+                <div className="text-5xl mb-3">📁</div>
+                <p className="text-lg font-semibold mb-1.5">Drop CSV file here</p>
+                <p className="text-slate-400 text-sm">or click to browse</p>
               </>
             )}
           </div>
@@ -203,52 +209,62 @@ export default function Home() {
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500 rounded-lg p-4 mb-6">
-            <p className="text-red-400">{error}</p>
+          <div className="bg-red-500/10 border border-red-500 rounded-lg p-3 mb-5">
+            <p className="text-red-400 text-sm">{error}</p>
           </div>
         )}
 
         {/* Analyzing State */}
         {isAnalyzing && (
-          <div className="bg-slate-800 rounded-lg p-6 mb-6 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-slate-300">Analyzing CSV...</p>
+          <div className="bg-slate-800 rounded-lg p-5 mb-5 text-center">
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mb-3"></div>
+            <p className="text-slate-300 text-sm">Analyzing CSV...</p>
           </div>
         )}
 
         {/* Field Selection */}
         {csvData?.success && csvData.headers && (
-          <div className="bg-slate-800 rounded-lg p-6 mb-6 border border-slate-700">
-            <h2 className="text-2xl font-bold mb-6">Configure Markers</h2>
+          <div className="bg-slate-800 rounded-lg p-5 mb-5 border border-slate-700">
+            <h2 className="text-xl font-bold mb-5">Configure Markers</h2>
 
             {/* Time Column Selection */}
-            <div className="mb-6">
-              <label className="block mb-2 font-semibold text-slate-200">Time Column</label>
+            <div className="mb-5">
+              <label className="block mb-1.5 font-semibold text-slate-200 text-sm">Time Column</label>
               <select
                 value={timeColumn}
                 onChange={(e) => setTimeColumn(e.target.value)}
-                className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {csvData.headers.map(header => (
                   <option key={header} value={header}>{header}</option>
                 ))}
               </select>
-              <p className="text-sm text-slate-400 mt-2">
+              <p className="text-xs text-slate-400 mt-1.5">
                 Detected frame rate: {csvData.frameRate} fps
               </p>
+              {getTimecodePreview().length > 0 && (
+                <div className="mt-2.5 bg-slate-700 rounded-lg p-3">
+                  <p className="text-xs text-slate-400 mb-2.5">Sample timecodes:</p>
+                  <div className="flex flex-wrap gap-2.5">
+                    {getTimecodePreview().map((tc, idx) => (
+                      <div key={idx} className="font-mono text-blue-300 text-sm">{tc}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Marker Fields Selection */}
-            <div className="mb-6">
-              <label className="block mb-2 font-semibold text-slate-200">Marker Fields</label>
-              <p className="text-sm text-slate-400 mb-3">Select columns to include in marker names</p>
-              <div className="flex flex-wrap gap-2">
+            <div className="mb-5">
+              <label className="block mb-1.5 font-semibold text-slate-200 text-sm">Marker Fields</label>
+              <p className="text-xs text-slate-400 mb-2.5">Select columns to include in marker names</p>
+              <div className="flex flex-wrap gap-1.5">
                 {csvData.headers
                   .filter(h => h !== timeColumn)
                   .map(header => (
                     <label
                       key={header}
-                      className={`inline-flex items-center px-4 py-2 rounded-lg cursor-pointer transition-colors ${
+                      className={`inline-flex items-center px-3 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
                         selectedFields.includes(header)
                           ? 'bg-blue-500 text-white'
                           : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
@@ -268,9 +284,9 @@ export default function Home() {
 
             {/* Preview */}
             {selectedFields.length > 0 && csvData.rows && csvData.rows.length > 0 && (
-              <div className="bg-slate-700 rounded-lg p-4">
-                <p className="text-sm text-slate-400 mb-2">Preview (first marker):</p>
-                <p className="font-mono text-blue-300">{getPreview()}</p>
+              <div className="bg-slate-700 rounded-lg p-3">
+                <p className="text-xs text-slate-400 mb-1.5">Preview (first marker):</p>
+                <p className="font-mono text-blue-300 text-sm">{getPreview()}</p>
               </div>
             )}
           </div>
@@ -281,7 +297,7 @@ export default function Home() {
           <button
             onClick={handleGenerateWAV}
             disabled={isGenerating || selectedFields.length === 0}
-            className={`w-full p-4 rounded-lg font-bold text-lg transition-all ${
+            className={`w-full p-3 rounded-lg font-bold text-base transition-all ${
               isGenerating || selectedFields.length === 0
                 ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl'
@@ -289,7 +305,7 @@ export default function Home() {
           >
             {isGenerating ? (
               <span className="flex items-center justify-center">
-                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2.5"></div>
                 Generating WAV...
               </span>
             ) : (
@@ -300,27 +316,27 @@ export default function Home() {
 
         {/* Instructions */}
         {csvData?.success && (
-          <div className="mt-8 bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h3 className="text-xl font-bold mb-4">Next Steps</h3>
-            <ol className="space-y-3 text-slate-300">
+          <div className="mt-6 bg-slate-800 rounded-lg p-5 border border-slate-700">
+            <h3 className="text-lg font-bold mb-3">Next Steps</h3>
+            <ol className="space-y-2.5 text-slate-300 text-sm">
               <li className="flex items-start">
-                <span className="font-bold text-blue-400 mr-3">1.</span>
+                <span className="font-bold text-blue-400 mr-2.5">1.</span>
                 <span>Download the generated WAV file</span>
               </li>
               <li className="flex items-start">
-                <span className="font-bold text-blue-400 mr-3">2.</span>
+                <span className="font-bold text-blue-400 mr-2.5">2.</span>
                 <span>Open Logic Pro with your project</span>
               </li>
               <li className="flex items-start">
-                <span className="font-bold text-blue-400 mr-3">3.</span>
+                <span className="font-bold text-blue-400 mr-2.5">3.</span>
                 <span>Import the audio file to the correct position (e.g. <strong>01:00:00:00</strong> or <strong>00:00:00:00</strong>)</span>
               </li>
               <li className="flex items-start">
-                <span className="font-bold text-blue-400 mr-3">4.</span>
+                <span className="font-bold text-blue-400 mr-2.5">4.</span>
                 <span>Go to <strong>Navigate &gt; Other &gt; Import Marker from Audio File</strong></span>
               </li>
               <li className="flex items-start">
-                <span className="font-bold text-blue-400 mr-3">5.</span>
+                <span className="font-bold text-blue-400 mr-2.5">5.</span>
                 <span>Markers will appear at their correct timestamps!</span>
               </li>
             </ol>
