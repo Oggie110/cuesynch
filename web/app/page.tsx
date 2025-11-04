@@ -64,9 +64,8 @@ export default function Home() {
       if (data.success && data.headers) {
         setCSVData(data);
         setTimeColumn(data.detectedTimeColumn || data.headers[0]);
-        // Auto-select all non-time columns as marker fields
-        const otherFields = data.headers.filter(h => h !== data.detectedTimeColumn);
-        setSelectedFields(otherFields);
+        // Start with no fields selected
+        setSelectedFields([]);
       } else {
         setError(data.message || 'Failed to analyze CSV');
       }
@@ -243,19 +242,23 @@ export default function Home() {
             <div className="mb-6">
               <label className="block mb-2 font-semibold text-slate-200">Marker Fields</label>
               <p className="text-sm text-slate-400 mb-3">Select columns to include in marker names</p>
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {csvData.headers
                   .filter(h => h !== timeColumn)
                   .map(header => (
                     <label
                       key={header}
-                      className="flex items-center p-3 bg-slate-700 rounded-lg cursor-pointer hover:bg-slate-600 transition-colors"
+                      className={`inline-flex items-center px-4 py-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedFields.includes(header)
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-slate-700 text-slate-200 hover:bg-slate-600'
+                      }`}
                     >
                       <input
                         type="checkbox"
                         checked={selectedFields.includes(header)}
                         onChange={() => toggleField(header)}
-                        className="w-5 h-5 mr-3 accent-blue-500"
+                        className="hidden"
                       />
                       <span>{header}</span>
                     </label>
@@ -310,11 +313,11 @@ export default function Home() {
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-blue-400 mr-3">3.</span>
-                <span>Go to <strong>Navigate &gt; Other &gt; Import Marker from Audio File</strong></span>
+                <span>Import the audio file to the correct position (e.g. <strong>01:00:00:00</strong> or <strong>00:00:00:00</strong>)</span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-blue-400 mr-3">4.</span>
-                <span>Select the downloaded WAV file</span>
+                <span>Go to <strong>Navigate &gt; Other &gt; Import Marker from Audio File</strong></span>
               </li>
               <li className="flex items-start">
                 <span className="font-bold text-blue-400 mr-3">5.</span>
